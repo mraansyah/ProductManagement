@@ -10,7 +10,13 @@ builder.Services.AddHttpClient<IAuthApiClient, AuthApiClient>(client =>
     client.BaseAddress = new Uri("https://dummyjson.com/");
 });
 
+builder.Services.AddHttpClient<IProductApiClient, ProductApiClient>(client =>
+{
+    client.BaseAddress = new Uri("https://dummyjson.com/");
+});
+
 builder.Services.AddScoped<IAuthService, AuthService>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 builder.Services.AddSession(options =>
 {
