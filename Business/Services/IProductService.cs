@@ -11,5 +11,7 @@ namespace Business.Services
     Task<Product?> CreateProductAsync(Product product);
     Task<Product?> UpdateProductAsync(int id, Product product);
     Task<bool> DeleteProductAsync(int id);
+    Task<List<ProductCategory>> GetCategoriesAsync();
+    Task<List<Product>> GetProductsForExportAsync(string? search);
   }
 }
