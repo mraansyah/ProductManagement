@@ -11,42 +11,79 @@
     <a asp-controller="Product" asp-action="Index" class="btn btn-outline-secondary">Kembali</a>
   </div>
 
-  <div class="card">
+  <div class="card" id="productDetailCard">
     <div class="row g-0">
-      <div class="col-md-4">
-        <img src="@Model.Thumbnail" class="img-fluid rounded-start p-3" alt="@Model.Title" />
+      <div class="col-md-4" id="thumbnailCol">
+        @if (!string.IsNullOrEmpty(Model.Thumbnail))
+        {
+          <img src="@Model.Thumbnail" class="img-fluid rounded-start p-3" alt="@Model.Title" />
+        }
       </div>
       <div class="col-md-8">
         <div class="card-body">
-          <h4 class="card-title">@Model.Title</h4>
-          <p class="card-text text-muted">@Model.Description</p>
+          <h4 class="card-title" id="detailTitle">@Model.Title</h4>
+          <p class="card-text text-muted" id="detailDescription">@Model.Description</p>
 
           <table class="table table-borderless">
             <tr>
               <th style="width: 150px;">Category</th>
-              <td>@Model.Category</td>
+              <td id="detailCategory">@Model.Category</td>
             </tr>
             <tr>
               <th>Brand</th>
-              <td>@(Model.Brand ?? "-")</td>
+              <td id="detailBrand">@(Model.Brand ?? "-")</td>
             </tr>
             <tr>
               <th>Price</th>
-              <td>$@Model.Price</td>
+              <td id="detailPrice">$@Model.Price</td>
             </tr>
             <tr>
               <th>Stock</th>
-              <td>@Model.Stock</td>
+              <td id="detailStock">@Model.Stock</td>
             </tr>
             <tr>
               <th>Rating</th>
-              <td>@Model.Rating</td>
+              <td id="detailRating">@Model.Rating</td>
             </tr>
           </table>
 
-          <a asp-controller="Product" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
+          <span id="localBadge" class="badge bg-secondary mb-2" style="display:none;">Local</span>
+
+          @if (ViewBag.IsAdmin)
+          {
+            <a asp-controller="Product" asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning"
+               id="editBtn">Edit</a>
+          }
         </div>
       </div>
     </div>
   </div>
 </div>
+
+@section Scripts {
+  <script>
+    (function () {
+      const productId = @Model.Id;
+      const local = JSON.parse(localStorage.getItem('localProducts') || '[]');
+      const localProduct = local.find(p => p.id === productId);
+
+      if (localProduct) {
+        document.getElementById('detailTitle').textContent = localProduct.title;
+        document.getElementById('detailDescription').textContent = localProduct.description || '-';
+        document.getElementById('detailCategory').textContent = localProduct.category || '-';
+        document.getElementById('detailBrand').textContent = localProduct.brand || '-';
+        document.getElementById('detailPrice').textContent = '$' + localProduct.price;
+        document.getElementById('detailStock').textContent = localProduct.stock;
+        document.getElementById('detailRating').textContent = localProduct.rating ?? '-';
+        document.getElementById('localBadge').style.display = 'inline-block';
+
+        const thumbCol = document.getElementById('thumbnailCol');
+        if (!localProduct.thumbnail) {
+          thumbCol.style.display = 'none';
+        } else {
+          thumbCol.innerHTML = '<img src="' + localProduct.thumbnail + '" class="img-fluid rounded-start p-3" alt="' + localProduct.title + '" />';
+        }
+      }
+    })();
+  </script>
+}

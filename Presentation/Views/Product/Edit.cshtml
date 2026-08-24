@@ -15,26 +15,26 @@
 
   <div class="card">
     <div class="card-body">
-      <form asp-controller="Product" asp-action="Edit" asp-route-id="@Model.Id" method="post">
+      <form asp-controller="Product" asp-action="Edit" asp-route-id="@Model.Id" method="post" id="editForm">
         @Html.AntiForgeryToken()
         <input type="hidden" asp-for="Id" />
         <div asp-validation-summary="ModelOnly" class="text-danger"></div>
 
         <div class="mb-3">
           <label asp-for="Title" class="form-label">Title</label>
-          <input asp-for="Title" class="form-control" />
+          <input asp-for="Title" class="form-control" id="editTitle" />
           <span asp-validation-for="Title" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
           <label asp-for="Description" class="form-label">Description</label>
-          <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+          <textarea asp-for="Description" class="form-control" rows="3" id="editDescription"></textarea>
           <span asp-validation-for="Description" class="text-danger"></span>
         </div>
 
         <div class="mb-3">
           <label asp-for="Category" class="form-label">Category</label>
-          <select asp-for="Category" class="form-select">
+          <select asp-for="Category" class="form-select" id="editCategory">
             <option value="">-- Pilih Category --</option>
             @foreach (var cat in (List<string>)ViewBag.Categories)
             {
@@ -47,29 +47,123 @@
         <div class="row">
           <div class="col-md-6 mb-3">
             <label asp-for="Price" class="form-label">Price</label>
-            <input asp-for="Price" type="number" step="0.01" class="form-control" />
+            <input asp-for="Price" type="number" step="0.01" class="form-control" id="editPrice" />
             <span asp-validation-for="Price" class="text-danger"></span>
           </div>
           <div class="col-md-6 mb-3">
             <label asp-for="Stock" class="form-label">Stock</label>
-            <input asp-for="Stock" type="number" class="form-control" />
+            <input asp-for="Stock" type="number" class="form-control" id="editStock" />
             <span asp-validation-for="Stock" class="text-danger"></span>
           </div>
         </div>
 
         <div class="mb-3">
           <label asp-for="Brand" class="form-label">Brand</label>
-          <input asp-for="Brand" class="form-control" />
+          <select asp-for="Brand" class="form-select" id="editBrand">
+            <option value="">-- Pilih Brand --</option>
+            @if (ViewBag.Brands != null)
+            {
+              @foreach (var brand in (List<string>)ViewBag.Brands)
+              {
+                <option value="@brand">@brand</option>
+              }
+            }
+          </select>
           <span asp-validation-for="Brand" class="text-danger"></span>
         </div>
 
-        <button type="submit" class="btn btn-primary">Update</button>
-        <a asp-controller="Product" asp-action="Index" class="btn btn-outline-secondary">Batal</a>
-      </form>
+        <span id="localBadge" class="badge bg-secondary mb-3" style="display:none;">Product Lokal - perubahan disimpan
+          di browser</span>
+
+          <div>
+            <button type="submit" class="btn btn-primary" id="submitBtn">Update</button>
+            <a asp-controller="Product" asp-action="Index" class="btn btn-outline-secondary">Batal</a>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
-</div>
 
-@section Scripts {
-  <partial name="_ValidationScriptsPartial" />
-}
+  @section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+      (function () {
+        const productId = @Model.Id;
+        const local = JSON.parse(localStorage.getItem('localProducts') || '[]');
+        const localProduct = local.find(p => p.id === productId);
+
+        if (localProduct) {
+          const titleInput = document.getElementById('editTitle');
+          const descInput = document.getElementById('editDescription');
+          const categorySelect = document.getElementById('editCategory');
+          const priceInput = document.getElementById('editPrice');
+          const stockInput = document.getElementById('editStock');
+          const brandSelect = document.getElementById('editBrand');
+
+          if (titleInput) titleInput.value = localProduct.title || '';
+          if (descInput) descInput.value = localProduct.description || '';
+          if (priceInput) priceInput.value = localProduct.price || 0;
+          if (stockInput) stockInput.value = localProduct.stock || 0;
+
+          if (categorySelect && localProduct.category) {
+            const catOption = Array.from(categorySelect.options).find(o => o.value === localProduct.category);
+            if (catOption) {
+              categorySelect.value = localProduct.category;
+            } else {
+              const newOpt = document.createElement('option');
+              newOpt.value = localProduct.category;
+              newOpt.textContent = localProduct.category;
+              newOpt.selected = true;
+              categorySelect.appendChild(newOpt);
+            }
+          }
+
+          if (brandSelect && localProduct.brand) {
+            const brandOption = Array.from(brandSelect.options).find(o => o.value === localProduct.brand);
+            if (brandOption) {
+              brandSelect.value = localProduct.brand;
+            } else {
+
+              const newOpt = document.createElement('option');
+              newOpt.value = localProduct.brand;
+              newOpt.textContent = localProduct.brand;
+              newOpt.selected = true;
+              brandSelect.appendChild(newOpt);
+            }
+          }
+
+          document.getElementById('localBadge').style.display = 'inline-block';
+
+          document.getElementById('editForm').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            const title = titleInput.value.trim();
+            const desc = descInput.value.trim();
+            const category = categorySelect.value;
+            const brand = brandSelect.value;
+            const price = parseFloat(priceInput.value);
+            const stock = parseInt(stockInput.value);
+
+            if (!title || !desc || !category || !brand || isNaN(price) || price <= 0 || isNaN(stock) || stock < 0) {
+              alert('Mohon lengkapi semua field dengan benar.');
+              return;
+            }
+
+            const allLocal = JSON.parse(localStorage.getItem('localProducts') || '[]');
+            const idx = allLocal.findIndex(p => p.id === productId);
+            if (idx !== -1) {
+              allLocal[idx].title = title;
+              allLocal[idx].description = desc;
+              allLocal[idx].category = category;
+              allLocal[idx].brand = brand;
+              allLocal[idx].price = price;
+              allLocal[idx].stock = stock;
+              localStorage.setItem('localProducts', JSON.stringify(allLocal));
+            }
+
+            window.location.href = '/Product/Index?localUpdated=true';
+          });
+        }
+      })();
+    </script>
+  }

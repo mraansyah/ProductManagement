@@ -25,6 +25,9 @@ namespace Data.Models
     [JsonPropertyName("image")]
     public string Image { get; set; } = string.Empty;
 
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = string.Empty;
+
     [JsonIgnore]
     public string FullName => $"{FirstName} {LastName}".Trim();
   }

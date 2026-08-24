@@ -12,82 +12,94 @@ namespace Data.ApiClients
       _httpClient = httpClient;
     }
 
-    public async Task<ProductListResponse?> GetAllAsync(int limit = 0, int skip = 0)
+    public async Task<ApiResult<ProductListResponse>> GetAllAsync(int limit = 0, int skip = 0)
     {
       var response = await _httpClient.GetAsync($"products?limit={limit}&skip={skip}");
 
       if (!response.IsSuccessStatusCode)
       {
-        return null;
+        return ApiResult<ProductListResponse>.Failure(response.StatusCode);
       }
 
-      return await response.Content.ReadFromJsonAsync<ProductListResponse>();
+      var data = await response.Content.ReadFromJsonAsync<ProductListResponse>();
+      return ApiResult<ProductListResponse>.Success(data!, response.StatusCode);
     }
 
-    public async Task<ProductListResponse?> SearchAsync(string query, int limit = 0, int skip = 0)
+    public async Task<ApiResult<ProductListResponse>> SearchAsync(string query, int limit = 0, int skip = 0)
     {
       var response = await _httpClient.GetAsync($"products/search?q={Uri.EscapeDataString(query)}&limit={limit}&skip={skip}");
 
       if (!response.IsSuccessStatusCode)
       {
-        return null;
+        return ApiResult<ProductListResponse>.Failure(response.StatusCode);
       }
 
-      return await response.Content.ReadFromJsonAsync<ProductListResponse>();
+      var data = await response.Content.ReadFromJsonAsync<ProductListResponse>();
+      return ApiResult<ProductListResponse>.Success(data!, response.StatusCode);
     }
 
-    public async Task<Product?> GetByIdAsync(int id)
+    public async Task<ApiResult<Product>> GetByIdAsync(int id)
     {
       var response = await _httpClient.GetAsync($"products/{id}");
 
       if (!response.IsSuccessStatusCode)
       {
-        return null;
+        return ApiResult<Product>.Failure(response.StatusCode);
       }
 
-      return await response.Content.ReadFromJsonAsync<Product>();
+      var data = await response.Content.ReadFromJsonAsync<Product>();
+      return ApiResult<Product>.Success(data!, response.StatusCode);
     }
 
-    public async Task<Product?> CreateAsync(Product product)
+    public async Task<ApiResult<Product>> CreateAsync(Product product)
     {
       var response = await _httpClient.PostAsJsonAsync("products/add", product);
 
       if (!response.IsSuccessStatusCode)
       {
-        return null;
+        return ApiResult<Product>.Failure(response.StatusCode);
       }
 
-      return await response.Content.ReadFromJsonAsync<Product>();
+      var data = await response.Content.ReadFromJsonAsync<Product>();
+      return ApiResult<Product>.Success(data!, response.StatusCode);
     }
 
-    public async Task<Product?> UpdateAsync(int id, Product product)
+    public async Task<ApiResult<Product>> UpdateAsync(int id, Product product)
     {
       var response = await _httpClient.PutAsJsonAsync($"products/{id}", product);
 
       if (!response.IsSuccessStatusCode)
       {
-        return null;
+        return ApiResult<Product>.Failure(response.StatusCode);
       }
 
-      return await response.Content.ReadFromJsonAsync<Product>();
+      var data = await response.Content.ReadFromJsonAsync<Product>();
+      return ApiResult<Product>.Success(data!, response.StatusCode);
     }
 
-    public async Task<bool> DeleteAsync(int id)
+    public async Task<ApiResult<bool>> DeleteAsync(int id)
     {
       var response = await _httpClient.DeleteAsync($"products/{id}");
-      return response.IsSuccessStatusCode;
+
+      if (!response.IsSuccessStatusCode)
+      {
+        return ApiResult<bool>.Failure(response.StatusCode);
+      }
+
+      return ApiResult<bool>.Success(true, response.StatusCode);
     }
 
-    public async Task<List<ProductCategory>?> GetCategoriesAsync()
+    public async Task<ApiResult<List<ProductCategory>>> GetCategoriesAsync()
     {
       var response = await _httpClient.GetAsync("products/categories");
 
       if (!response.IsSuccessStatusCode)
       {
-        return null;
+        return ApiResult<List<ProductCategory>>.Failure(response.StatusCode);
       }
 
-      return await response.Content.ReadFromJsonAsync<List<ProductCategory>>();
+      var data = await response.Content.ReadFromJsonAsync<List<ProductCategory>>();
+      return ApiResult<List<ProductCategory>>.Success(data!, response.StatusCode);
     }
   }
 }

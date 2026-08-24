@@ -18,18 +18,18 @@ namespace Business.Services
 
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync()
     {
-      var result = await _productApiClient.GetAllAsync(limit: 0, skip: 0);
+      var apiResult = await _productApiClient.GetAllAsync(limit: 0, skip: 0);
 
       var summary = new DashboardSummaryDto();
 
-      if (result == null || result.Products.Count == 0)
+      if (!apiResult.IsSuccess || apiResult.Data == null || apiResult.Data.Products.Count == 0)
       {
         return summary;
       }
 
-      var products = result.Products;
+      var products = apiResult.Data.Products;
 
-      summary.TotalProduct = result.Total;
+      summary.TotalProduct = apiResult.Data.Total;
 
       summary.TotalCategory = products
           .Select(p => p.Category)
@@ -61,6 +61,7 @@ namespace Business.Services
             Id = p.Id,
             Title = p.Title,
             Category = p.Category,
+            Brand = p.Brand,
             Price = p.Price,
             Stock = p.Stock,
             Rating = p.Rating
@@ -70,7 +71,7 @@ namespace Business.Services
       return summary;
     }
 
-    public async Task<ProductListResponse?> GetProductsAsync(int page, int pageSize, string? search)
+    public async Task<ApiResult<ProductListResponse>> GetProductsAsync(int page, int pageSize, string? search)
     {
       int skip = (page - 1) * pageSize;
 
@@ -82,46 +83,61 @@ namespace Business.Services
       return await _productApiClient.GetAllAsync(pageSize, skip);
     }
 
-    public async Task<Product?> GetProductByIdAsync(int id)
+    public async Task<ApiResult<Product>> GetProductByIdAsync(int id)
     {
       return await _productApiClient.GetByIdAsync(id);
     }
 
-    public async Task<Product?> CreateProductAsync(Product product)
+    public async Task<ApiResult<Product>> CreateProductAsync(Product product)
     {
       return await _productApiClient.CreateAsync(product);
     }
 
-    public async Task<Product?> UpdateProductAsync(int id, Product product)
+    public async Task<ApiResult<Product>> UpdateProductAsync(int id, Product product)
     {
       return await _productApiClient.UpdateAsync(id, product);
     }
 
-    public async Task<bool> DeleteProductAsync(int id)
+    public async Task<ApiResult<bool>> DeleteProductAsync(int id)
     {
       return await _productApiClient.DeleteAsync(id);
     }
 
-    public async Task<List<ProductCategory>> GetCategoriesAsync()
+    public async Task<ApiResult<List<ProductCategory>>> GetCategoriesAsync()
     {
-      var categories = await _productApiClient.GetCategoriesAsync();
-      return categories ?? new List<ProductCategory>();
+      return await _productApiClient.GetCategoriesAsync();
+    }
+
+    public async Task<List<string>> GetBrandsAsync()
+    {
+      var apiResult = await _productApiClient.GetAllAsync(limit: 0, skip: 0);
+      if (!apiResult.IsSuccess || apiResult.Data == null)
+      {
+        return new List<string>();
+      }
+
+      return apiResult.Data.Products
+          .Where(p => !string.IsNullOrWhiteSpace(p.Brand))
+          .Select(p => p.Brand!)
+          .Distinct()
+          .OrderBy(b => b)
+          .ToList();
     }
 
     public async Task<List<Product>> GetProductsForExportAsync(string? search)
     {
-      ProductListResponse? result;
+      ApiResult<ProductListResponse> apiResult;
 
       if (!string.IsNullOrWhiteSpace(search))
       {
-        result = await _productApiClient.SearchAsync(search, limit: 0, skip: 0);
+        apiResult = await _productApiClient.SearchAsync(search, limit: 0, skip: 0);
       }
       else
       {
-        result = await _productApiClient.GetAllAsync(limit: 0, skip: 0);
+        apiResult = await _productApiClient.GetAllAsync(limit: 0, skip: 0);
       }
 
-      return result?.Products ?? new List<Product>();
+      return apiResult.Data?.Products ?? new List<Product>();
     }
   }
 }

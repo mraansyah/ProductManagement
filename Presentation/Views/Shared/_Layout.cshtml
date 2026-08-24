@@ -58,6 +58,55 @@
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
     @await RenderSectionAsync("Scripts", required: false)
+
+    <div id="loadingOverlay" class="loading-overlay" style="display:none;">
+        <div class="loading-box">
+            <div class="spinner-border text-primary" role="status"></div>
+            <div class="mt-2">Loading data...</div>
+        </div>
+    </div>
+
+    <style>
+            .loading-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(255, 255, 255, 0.7);
+                z-index: 2000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+
+            .loading-box {
+                text-align: center;
+            }
+    </style>
+
+    <script>
+            $(function () {
+                $('#loadingOverlay').hide();
+
+                $(document).on('submit', 'form', function () {
+                    $('#loadingOverlay').show();
+                });
+
+                $(document).on('click', 'a[href]:not(.no-loading)', function () {
+                    const href = $(this).attr('href');
+                    if (href && href !== '#' && !href.startsWith('javascript:')) {
+                        $('#loadingOverlay').show();
+                    }
+                });
+            });
+
+            window.addEventListener('pageshow', function (event) {
+                if (event.persisted) {
+                    $('#loadingOverlay').hide();
+                }
+            });
+    </script>
 </body>
 
 </html>
