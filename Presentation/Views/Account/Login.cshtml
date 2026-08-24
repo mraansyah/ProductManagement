@@ -1,0 +1,46 @@
+@model Business.DTOs.LoginRequestDto
+
+@{
+  ViewData["Title"] = "Login";
+  Layout = "_Layout";
+}
+
+<div class="d-flex justify-content-center align-items-center" style="min-height: 80vh;">
+  <div class="card shadow-sm" style="width: 100%; max-width: 400px;">
+    <div class="card-body p-4">
+      <h3 class="text-center mb-4">Product Management</h3>
+      <h5 class="text-center text-muted mb-4">Login</h5>
+
+      @if (ViewBag.ErrorMessage != null)
+      {
+        <div class="alert alert-danger">@ViewBag.ErrorMessage</div>
+      }
+      else if (TempData["ErrorMessage"] != null)
+      {
+        <div class="alert alert-danger">@TempData["ErrorMessage"]</div>
+      }
+
+      <form asp-controller="Account" asp-action="Login" method="post">
+        @Html.AntiForgeryToken()
+
+        <div class="mb-3">
+          <label asp-for="Username" class="form-label">Username</label>
+          <input asp-for="Username" class="form-control" placeholder="Masukkan username" />
+          <span asp-validation-for="Username" class="text-danger"></span>
+        </div>
+
+        <div class="mb-3">
+          <label asp-for="Password" class="form-label">Password</label>
+          <input asp-for="Password" type="password" class="form-control" placeholder="Masukkan password" />
+          <span asp-validation-for="Password" class="text-danger"></span>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100">Login</button>
+      </form>
+
+      <div class="text-center text-muted mt-3" style="font-size: 0.85rem;">
+        Contoh akun: <b>emilys</b> / <b>emilyspass</b>
+      </div>
+    </div>
+  </div>
+</div>
