@@ -58,7 +58,16 @@
 
         <div class="mb-3">
           <label asp-for="Brand" class="form-label">Brand</label>
-          <input asp-for="Brand" class="form-control" />
+          <select asp-for="Brand" class="form-select">
+            <option value="">-- Pilih Brand --</option>
+            @if (ViewBag.Brands != null)
+            {
+              @foreach (var brand in (List<string>)ViewBag.Brands)
+              {
+                <option value="@brand">@brand</option>
+              }
+            }
+          </select>
           <span asp-validation-for="Brand" class="text-danger"></span>
         </div>
 

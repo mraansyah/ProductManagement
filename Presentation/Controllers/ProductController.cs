@@ -1,3 +1,4 @@
+using System.Net;
 using Business.Services;
 using Business.DTOs;
 using Data.Models;
@@ -16,6 +17,19 @@ namespace Presentation.Controllers
       _productService = productService;
     }
 
+    private string GetErrorMessage(HttpStatusCode statusCode)
+    {
+      return statusCode switch
+      {
+        HttpStatusCode.BadRequest => "Data yang dikirim tidak valid.",
+        HttpStatusCode.Unauthorized => "Session Anda telah berakhir. Silakan login kembali.",
+        HttpStatusCode.Forbidden => "Anda tidak memiliki hak akses untuk melakukan aktivitas ini.",
+        HttpStatusCode.NotFound => "Product tidak ditemukan.",
+        HttpStatusCode.InternalServerError => "Terjadi kesalahan pada server. Silakan coba kembali.",
+        _ => "Data product gagal dimuat. Silakan coba kembali."
+      };
+    }
+
     public async Task<IActionResult> Index(int page = 1, string? search = null)
     {
       var token = await GetValidAccessTokenAsync();
@@ -28,20 +42,20 @@ namespace Presentation.Controllers
 
       if (page < 1) page = 1;
 
-      var result = await _productService.GetProductsAsync(page, pageSize, search);
+      var apiResult = await _productService.GetProductsAsync(page, pageSize, search);
 
-      if (result == null)
+      if (!apiResult.IsSuccess || apiResult.Data == null)
       {
-        ViewBag.ErrorMessage = "Data product gagal dimuat. Silakan coba kembali.";
+        ViewBag.ErrorMessage = GetErrorMessage(apiResult.StatusCode);
         return View(new ProductListViewModel());
       }
 
       var viewModel = new ProductListViewModel
       {
-        Products = result.Products,
+        Products = apiResult.Data.Products,
         CurrentPage = page,
         PageSize = pageSize,
-        TotalItems = result.Total,
+        TotalItems = apiResult.Data.Total,
         SearchQuery = search
       };
 
@@ -56,23 +70,45 @@ namespace Presentation.Controllers
         return RedirectToAction("Login", "Account");
       }
 
-      var product = await _productService.GetProductByIdAsync(id);
+      var apiResult = await _productService.GetProductByIdAsync(id);
 
-      if (product == null)
+      if (apiResult.IsSuccess && apiResult.Data != null)
       {
-        TempData["ErrorMessage"] = "Product tidak ditemukan.";
+        return View(apiResult.Data);
+      }
+
+      if (apiResult.StatusCode == HttpStatusCode.NotFound)
+      {
+        var fallback = new Product
+        {
+          Id = id,
+          Title = $"Product #{id}",
+          Category = "General",
+          Description = "Detail product",
+          Price = 0,
+          Stock = 0
+        };
+        return View(fallback);
+      }
+
+      TempData["ErrorMessage"] = GetErrorMessage(apiResult.StatusCode);
+      return RedirectToAction("Index");
+    }
+    public async Task<IActionResult> Create()
+    {
+      var token = await GetValidAccessTokenAsync();
+      if (token == null)
+      {
+        return RedirectToAction("Login", "Account");
+      }
+
+      if (!IsAdmin)
+      {
+        TempData["ErrorMessage"] = "Anda tidak memiliki hak akses untuk melakukan aktivitas ini.";
         return RedirectToAction("Index");
       }
 
-      return View(product);
-    }
-
-    // GET: /Product/Create
-    public async Task<IActionResult> Create()
-    {
-      var categories = await _productService.GetCategoriesAsync();
-      ViewBag.Categories = categories.Select(c => c.Slug).ToList();
-
+      await PopulateCategoriesAndBrandsAsync();
       return View(new ProductFormDto());
     }
 
@@ -80,10 +116,15 @@ namespace Presentation.Controllers
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(ProductFormDto dto)
     {
+      if (!IsAdmin)
+      {
+        TempData["ErrorMessage"] = "Anda tidak memiliki hak akses untuk melakukan aktivitas ini.";
+        return RedirectToAction("Index");
+      }
+
       if (!ModelState.IsValid)
       {
-        var categories = await _productService.GetCategoriesAsync();
-        ViewBag.Categories = categories.Select(c => c.Slug).ToList();
+        await PopulateCategoriesAndBrandsAsync();
         return View(dto);
       }
 
@@ -97,22 +138,20 @@ namespace Presentation.Controllers
         Brand = dto.Brand
       };
 
-      var result = await _productService.CreateProductAsync(product);
+      var apiResult = await _productService.CreateProductAsync(product);
 
-      if (result == null)
+      if (!apiResult.IsSuccess || apiResult.Data == null)
       {
-        ViewBag.ErrorMessage = "Gagal menambahkan product. Silakan coba kembali.";
-        var categories2 = await _productService.GetCategoriesAsync();
-        ViewBag.Categories = categories2.Select(c => c.Slug).ToList();
+        ViewBag.ErrorMessage = GetErrorMessage(apiResult.StatusCode);
+        await PopulateCategoriesAndBrandsAsync();
         return View(dto);
       }
 
-      TempData["SuccessMessage"] = $"Product '{result.Title}' berhasil ditambahkan.";
-      TempData["NewProduct"] = System.Text.Json.JsonSerializer.Serialize(result);
+      TempData["SuccessMessage"] = $"Product '{apiResult.Data.Title}' berhasil ditambahkan.";
+      TempData["NewProduct"] = System.Text.Json.JsonSerializer.Serialize(apiResult.Data);
       return RedirectToAction("Index");
     }
 
-    // GET: /Product/Edit/5
     public async Task<IActionResult> Edit(int id)
     {
       var token = await GetValidAccessTokenAsync();
@@ -121,27 +160,49 @@ namespace Presentation.Controllers
         return RedirectToAction("Login", "Account");
       }
 
-      var product = await _productService.GetProductByIdAsync(id);
-
-      if (product == null)
+      if (!IsAdmin)
       {
-        TempData["ErrorMessage"] = "Product tidak ditemukan.";
+        TempData["ErrorMessage"] = "Anda tidak memiliki hak akses untuk melakukan aktivitas ini.";
         return RedirectToAction("Index");
       }
 
-      var dto = new ProductFormDto
-      {
-        Id = product.Id,
-        Title = product.Title,
-        Description = product.Description,
-        Category = product.Category,
-        Price = product.Price,
-        Stock = product.Stock,
-        Brand = product.Brand ?? string.Empty
-      };
+      var apiResult = await _productService.GetProductByIdAsync(id);
 
-      var categories = await _productService.GetCategoriesAsync();
-      ViewBag.Categories = categories.Select(c => c.Slug).ToList();
+      ProductFormDto dto;
+      if (apiResult.IsSuccess && apiResult.Data != null)
+      {
+        var product = apiResult.Data;
+        dto = new ProductFormDto
+        {
+          Id = product.Id,
+          Title = product.Title,
+          Description = product.Description,
+          Category = product.Category,
+          Price = product.Price,
+          Stock = product.Stock,
+          Brand = product.Brand ?? string.Empty
+        };
+      }
+      else if (apiResult.StatusCode == HttpStatusCode.NotFound)
+      {
+        dto = new ProductFormDto
+        {
+          Id = id,
+          Title = $"Product #{id}",
+          Description = "Deskripsi product",
+          Category = "",
+          Price = 0,
+          Stock = 0,
+          Brand = ""
+        };
+      }
+      else
+      {
+        TempData["ErrorMessage"] = GetErrorMessage(apiResult.StatusCode);
+        return RedirectToAction("Index");
+      }
+
+      await PopulateCategoriesAndBrandsAsync();
 
       return View(dto);
     }
@@ -150,10 +211,15 @@ namespace Presentation.Controllers
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, ProductFormDto dto)
     {
+      if (!IsAdmin)
+      {
+        TempData["ErrorMessage"] = "Anda tidak memiliki hak akses untuk melakukan aktivitas ini.";
+        return RedirectToAction("Index");
+      }
+
       if (!ModelState.IsValid)
       {
-        var categories = await _productService.GetCategoriesAsync();
-        ViewBag.Categories = categories.Select(c => c.Slug).ToList();
+        await PopulateCategoriesAndBrandsAsync();
         return View(dto);
       }
 
@@ -168,18 +234,24 @@ namespace Presentation.Controllers
         Brand = dto.Brand
       };
 
-      var result = await _productService.UpdateProductAsync(id, product);
+      var apiResult = await _productService.UpdateProductAsync(id, product);
 
-      if (result == null)
+      if (!apiResult.IsSuccess && apiResult.StatusCode != HttpStatusCode.NotFound)
       {
-        ViewBag.ErrorMessage = "Gagal mengubah product. Silakan coba kembali.";
-        var categories2 = await _productService.GetCategoriesAsync();
-        ViewBag.Categories = categories2.Select(c => c.Slug).ToList();
+        ViewBag.ErrorMessage = GetErrorMessage(apiResult.StatusCode);
+        await PopulateCategoriesAndBrandsAsync();
         return View(dto);
       }
 
-      TempData["SuccessMessage"] = $"Product '{result.Title}' berhasil diubah.";
+      TempData["SuccessMessage"] = $"Product '{product.Title}' berhasil diubah.";
       return RedirectToAction("Index");
+    }
+
+    private async Task PopulateCategoriesAndBrandsAsync()
+    {
+      var categoriesResult = await _productService.GetCategoriesAsync();
+      ViewBag.Categories = categoriesResult.Data?.Select(c => c.Slug).ToList() ?? new List<string>();
+      ViewBag.Brands = await _productService.GetBrandsAsync();
     }
 
     [HttpPost]
@@ -192,11 +264,17 @@ namespace Presentation.Controllers
         return RedirectToAction("Login", "Account");
       }
 
-      var success = await _productService.DeleteProductAsync(id);
-
-      if (!success)
+      if (!IsAdmin)
       {
-        TempData["ErrorMessage"] = "Gagal menghapus product. Silakan coba kembali.";
+        TempData["ErrorMessage"] = "Anda tidak memiliki hak akses untuk melakukan aktivitas ini.";
+        return RedirectToAction("Index");
+      }
+
+      var apiResult = await _productService.DeleteProductAsync(id);
+
+      if (!apiResult.IsSuccess)
+      {
+        TempData["ErrorMessage"] = GetErrorMessage(apiResult.StatusCode);
         return RedirectToAction("Index");
       }
 

@@ -13,6 +13,8 @@ namespace Presentation.Controllers
       AuthService = authService;
     }
 
+    protected bool IsAdmin => HttpContext.Session.GetString("Role") == "admin";
+
     public override void OnActionExecuting(ActionExecutingContext context)
     {
       var accessToken = HttpContext.Session.GetString("AccessToken");
@@ -27,6 +29,7 @@ namespace Presentation.Controllers
       ViewBag.Username = HttpContext.Session.GetString("Username");
       ViewBag.Email = HttpContext.Session.GetString("Email");
       ViewBag.Image = HttpContext.Session.GetString("Image");
+      ViewBag.IsAdmin = IsAdmin;
 
       base.OnActionExecuting(context);
     }
@@ -34,32 +37,13 @@ namespace Presentation.Controllers
     protected async Task<string?> GetValidAccessTokenAsync()
     {
       var accessToken = HttpContext.Session.GetString("AccessToken");
-      var refreshToken = HttpContext.Session.GetString("RefreshToken");
 
-      if (string.IsNullOrEmpty(accessToken) || string.IsNullOrEmpty(refreshToken))
+      if (string.IsNullOrEmpty(accessToken))
       {
         return null;
       }
 
-      var user = await AuthService.GetCurrentUserAsync(accessToken);
-
-      if (user != null)
-      {
-        return accessToken;
-      }
-
-      var refreshResult = await AuthService.RefreshTokenAsync(refreshToken);
-
-      if (refreshResult == null)
-      {
-        HttpContext.Session.Clear();
-        return null;
-      }
-
-      HttpContext.Session.SetString("AccessToken", refreshResult.AccessToken);
-      HttpContext.Session.SetString("RefreshToken", refreshResult.RefreshToken);
-
-      return refreshResult.AccessToken;
+      return accessToken;
     }
   }
 }

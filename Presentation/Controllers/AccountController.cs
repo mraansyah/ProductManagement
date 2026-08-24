@@ -46,6 +46,7 @@ namespace Presentation.Controllers
       HttpContext.Session.SetString("FullName", user.FullName);
       HttpContext.Session.SetString("Email", user.Email);
       HttpContext.Session.SetString("Image", user.Image);
+      HttpContext.Session.SetString("Role", user.Role);
 
       return View(user);
     }
@@ -73,6 +74,9 @@ namespace Presentation.Controllers
       HttpContext.Session.SetString("FullName", result.FullName);
       HttpContext.Session.SetString("Email", result.Email);
       HttpContext.Session.SetString("Image", result.Image);
+
+      var currentUser = await _authService.GetCurrentUserAsync(result.AccessToken);
+      HttpContext.Session.SetString("Role", currentUser?.Role ?? "user");
 
       return RedirectToAction("Index", "Dashboard");
     }

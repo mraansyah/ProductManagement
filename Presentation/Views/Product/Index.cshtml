@@ -9,7 +9,10 @@
   <div class="d-flex justify-content-between align-items-center mb-3">
     <h3>Product Management</h3>
     <div>
-      <a asp-controller="Product" asp-action="Create" class="btn btn-primary">+ Tambah Product</a>
+      @if (ViewBag.IsAdmin)
+      {
+        <a asp-controller="Product" asp-action="Create" class="btn btn-primary">+ Tambah Product</a>
+      }
 
       <div class="btn-group">
         <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
@@ -17,13 +20,13 @@
         </button>
         <ul class="dropdown-menu">
           <li>
-            <a class="dropdown-item" asp-controller="Product" asp-action="Download" asp-route-format="csv"
+            <a class="dropdown-item no-loading" asp-controller="Product" asp-action="Download" asp-route-format="csv"
                asp-route-search="@Model.SearchQuery">
               CSV
             </a>
           </li>
           <li>
-            <a class="dropdown-item" asp-controller="Product" asp-action="Download" asp-route-format="excel"
+            <a class="dropdown-item no-loading" asp-controller="Product" asp-action="Download" asp-route-format="excel"
                asp-route-search="@Model.SearchQuery">
               Excel
             </a>
@@ -73,6 +76,7 @@
             <tr>
               <th>Product</th>
               <th>Category</th>
+              <th>Brand</th>
               <th>Price</th>
               <th>Stock</th>
               <th>Rating</th>
@@ -85,17 +89,21 @@
               <tr>
                 <td>@p.Title</td>
                 <td>@p.Category</td>
+                <td>@(p.Brand ?? "-")</td>
                 <td>$@p.Price</td>
                 <td>@p.Stock</td>
                 <td>@p.Rating</td>
                 <td>
                   <a asp-controller="Product" asp-action="Detail" asp-route-id="@p.Id"
                      class="btn btn-sm btn-outline-info">Detail</a>
-                  <a asp-controller="Product" asp-action="Edit" asp-route-id="@p.Id"
-                     class="btn btn-sm btn-outline-warning">Edit</a>
-                  <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(@p.Id, '@p.Title')">
-                    Delete
-                  </button>
+                  @if (ViewBag.IsAdmin)
+                  {
+                    <a asp-controller="Product" asp-action="Edit" asp-route-id="@p.Id"
+                       class="btn btn-sm btn-outline-warning">Edit</a>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="confirmDelete(@p.Id, '@p.Title')">
+                      Delete
+                    </button>
+                  }
                 </td>
               </tr>
             }
@@ -146,17 +154,33 @@
       {
         <text>
             (function () {
-                            const newProduct = @Html.Raw(TempData["NewProduct"]);
+                                                          const newProduct = @Html.Raw(TempData["NewProduct"]);
             newProduct.isLocal = true;
             let local = JSON.parse(localStorage.getItem('localProducts') || '[]');
             local.unshift(newProduct);
             localStorage.setItem('localProducts', JSON.stringify(local));
-                        })();
+                                                      })();
         </text>
     }
 
-            const currentPage = @Model.CurrentPage;
+      (function () {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('localUpdated') === 'true') {
+          const alertDiv = document.createElement('div');
+          alertDiv.className = 'alert alert-success';
+          alertDiv.textContent = 'Product lokal berhasil diubah.';
+          const container = document.querySelector('.container-fluid.mt-3');
+          if (container) {
+            const firstCard = container.querySelector('.card');
+            if (firstCard) container.insertBefore(alertDiv, firstCard);
+          }
+          window.history.replaceState({}, '', window.location.pathname);
+        }
+      })();
+
+    const currentPage = @Model.CurrentPage;
     const searchQuery = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.SearchQuery ?? ""));
+    const isAdmin = @Html.Raw(ViewBag.IsAdmin ? "true" : "false");
 
     function renderLocalProducts() {
       if (currentPage !== 1) return;
@@ -173,19 +197,24 @@
       if (!tbody) return;
 
       local.slice().reverse().forEach(p => {
+        const adminActions = isAdmin
+          ? `<a href="/Product/Edit/${p.id}" class="btn btn-sm btn-outline-warning">Edit</a>
+                   <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteLocalProduct(${p.id})">Delete</button>`
+          : '';
+
         const tr = document.createElement('tr');
         tr.innerHTML = `
-                        <td>${p.title} <span class="badge bg-secondary">Local</span></td>
-                        <td>${p.category}</td>
-                        <td>$${p.price}</td>
-                        <td>${p.stock}</td>
-                        <td>${p.rating ?? '-'}</td>
-                        <td>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Data lokal, tidak tersedia di API">Detail</button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary" disabled title="Data lokal, tidak tersedia di API">Edit</button>
-                            <button type="button" class="btn btn-sm btn-outline-danger" onclick="deleteLocalProduct(${p.id})">Delete</button>
-                        </td>
-                    `;
+                                  <td>${p.title} <span class="badge bg-secondary">Local</span></td>
+                                  <td>${p.category}</td>
+                                  <td>${p.brand || '-'}</td>
+                                  <td>$${p.price}</td>
+                                  <td>${p.stock}</td>
+                                  <td>${p.rating ?? '-'}</td>
+                                  <td>
+                                      <a href="/Product/Detail/${p.id}" class="btn btn-sm btn-outline-info">Detail</a>
+                                      ${adminActions}
+                                  </td>
+                              `;
         tbody.prepend(tr);
       });
     }

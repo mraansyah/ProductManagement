@@ -76,6 +76,7 @@
             <tr>
               <th>Product</th>
               <th>Category</th>
+              <th>Brand</th>
               <th>Price</th>
               <th>Stock</th>
               <th>Rating</th>
@@ -87,6 +88,7 @@
               <tr>
                 <td>@p.Title</td>
                 <td>@p.Category</td>
+                <td>@(p.Brand ?? "-")</td>
                 <td>$@p.Price</td>
                 <td>@p.Stock</td>
                 <td>@p.Rating</td>
