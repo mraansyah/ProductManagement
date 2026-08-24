@@ -18,7 +18,6 @@ namespace Business.Services
 
     public async Task<DashboardSummaryDto> GetDashboardSummaryAsync()
     {
-      // Ambil SEMUA produk (limit=0) supaya perhitungan akurat, bukan cuma 1 halaman
       var result = await _productApiClient.GetAllAsync(limit: 0, skip: 0);
 
       var summary = new DashboardSummaryDto();
@@ -101,6 +100,28 @@ namespace Business.Services
     public async Task<bool> DeleteProductAsync(int id)
     {
       return await _productApiClient.DeleteAsync(id);
+    }
+
+    public async Task<List<ProductCategory>> GetCategoriesAsync()
+    {
+      var categories = await _productApiClient.GetCategoriesAsync();
+      return categories ?? new List<ProductCategory>();
+    }
+
+    public async Task<List<Product>> GetProductsForExportAsync(string? search)
+    {
+      ProductListResponse? result;
+
+      if (!string.IsNullOrWhiteSpace(search))
+      {
+        result = await _productApiClient.SearchAsync(search, limit: 0, skip: 0);
+      }
+      else
+      {
+        result = await _productApiClient.GetAllAsync(limit: 0, skip: 0);
+      }
+
+      return result?.Products ?? new List<Product>();
     }
   }
 }

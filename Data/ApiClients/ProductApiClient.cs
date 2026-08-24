@@ -77,5 +77,17 @@ namespace Data.ApiClients
       var response = await _httpClient.DeleteAsync($"products/{id}");
       return response.IsSuccessStatusCode;
     }
+
+    public async Task<List<ProductCategory>?> GetCategoriesAsync()
+    {
+      var response = await _httpClient.GetAsync("products/categories");
+
+      if (!response.IsSuccessStatusCode)
+      {
+        return null;
+      }
+
+      return await response.Content.ReadFromJsonAsync<List<ProductCategory>>();
+    }
   }
 }
