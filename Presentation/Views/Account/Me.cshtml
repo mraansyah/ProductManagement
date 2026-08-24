@@ -1,0 +1,18 @@
+@model Data.Models.AuthUser
+
+@{
+  ViewData["Title"] = "Profil Saya";
+  Layout = "_Layout";
+}
+
+<div class="container mt-4">
+  <h3>Profil Saya</h3>
+  <div class="card" style="max-width: 500px;">
+    <div class="card-body text-center">
+      <img src="@Model.Image" alt="Foto Profil" class="rounded-circle mb-3" width="100" height="100" />
+      <h5>@Model.FullName</h5>
+      <p class="text-muted mb-1">@@@Model.Username</p>
+      <p class="text-muted">@Model.Email</p>
+    </div>
+  </div>
+</div>
