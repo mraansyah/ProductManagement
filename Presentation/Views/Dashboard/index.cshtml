@@ -1,0 +1,141 @@
+@model Business.DTOs.DashboardSummaryDto
+
+@{
+  ViewData["Title"] = "Dashboard";
+  Layout = "_Layout";
+}
+
+<div class="container-fluid mt-3">
+  <h3 class="mb-4">Dashboard</h3>
+
+  @if (Model.TotalProduct == 0)
+  {
+    <div class="alert alert-warning">Data product gagal dimuat. Silakan coba kembali.</div>
+  }
+  else
+  {
+    <div class="row mb-4">
+      <div class="col-md-3">
+        <div class="card text-white bg-primary">
+          <div class="card-body">
+            <h6 class="card-title">Total Product</h6>
+            <h2>@Model.TotalProduct</h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-white bg-success">
+          <div class="card-body">
+            <h6 class="card-title">Total Category</h6>
+            <h2>@Model.TotalCategory</h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-white bg-info">
+          <div class="card-body">
+            <h6 class="card-title">Product Rating &gt; 4</h6>
+            <h2>@Model.ProductRatingAboveFour</h2>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="card text-white bg-danger">
+          <div class="card-body">
+            <h6 class="card-title">Product Stock Rendah</h6>
+            <h2>@Model.ProductLowStock</h2>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row mb-4">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="card-title">Product berdasarkan Category</h6>
+            <canvas id="categoryBarChart"></canvas>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h6 class="card-title">Stock Product</h6>
+            <canvas id="stockPieChart"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-body">
+        <h6 class="card-title">Latest Products</h6>
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th>Category</th>
+              <th>Price</th>
+              <th>Stock</th>
+              <th>Rating</th>
+            </tr>
+          </thead>
+          <tbody>
+            @foreach (var p in Model.LatestProducts)
+            {
+              <tr>
+                <td>@p.Title</td>
+                <td>@p.Category</td>
+                <td>$@p.Price</td>
+                <td>@p.Stock</td>
+                <td>@p.Rating</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </div>
+  }
+</div>
+
+@section Scripts {
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+  <script>
+    const categoryLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductByCategory.Keys));
+    const categoryData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.ProductByCategory.Values));
+
+    new Chart(document.getElementById('categoryBarChart'), {
+      type: 'bar',
+      data: {
+        labels: categoryLabels,
+        datasets: [{
+          label: 'Jumlah Product',
+          data: categoryData,
+          backgroundColor: '#0d6efd'
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    const stockLabels = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockGroup.Keys));
+    const stockData = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(Model.StockGroup.Values));
+
+    new Chart(document.getElementById('stockPieChart'), {
+      type: 'pie',
+      data: {
+        labels: stockLabels,
+        datasets: [{
+          data: stockData,
+          backgroundColor: ['#dc3545', '#ffc107', '#198754']
+        }]
+      },
+      options: {
+        responsive: true
+      }
+    });
+  </script>
+}
